@@ -1,0 +1,343 @@
+﻿@page "/chatGPT"
+@layout MainLayout
+@using System.Text;
+@using ChatMicrosoft.Data;
+@using ChatMicrosoft.DataBase;
+@using ChatMicrosoft.Models;
+@inject ChatGPTChatService chatService
+@inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Forms
+@using MySql.Data.MySqlClient;
+@using System.Text.RegularExpressions;
+@inject IConfiguration config
+@inject DatabaseService databaseService
+@inject ChatGPTEmbeddingService embeddingService;
+
+
+<PageTitle>Chat GPT</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel" id="chat">
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        <i class="icon wb-chat-text" aria-hidden="true"></i> Chat GPT
+                    </h3>
+                </div>
+                <div class="panel-body">
+                    <div class="chat-box">
+                        <div class="chats">
+                           
+                        @foreach (var message in chatService.GetMessages())
+                        {
+                            @if (message.IsAIResponse)
+                            {
+                                <!-- CHAT AI -->
+                                    <div class="chat">
+                                    <div class="chat-avatar">
+                                        <a class="avatar avatar-online" data-toggle="tooltip" data-placement="right">
+                                            <img src="/image/ai.png" alt="...">
+                                            <i></i>
+                                        </a>
+                                    </div>
+                                    <div class="chat-body">
+                                        <div class="chat-content">
+                                           <p class="text"> @message.Content </p>
+                                            <time class="chat-time" datetime="@message.date.ToString("MM-ddTHH:mm")">@message.date.ToString("HH:mm tt")</time>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <!-- CHAT USER -->
+                                <div class="chat chat-left">
+                                    <div class="chat-avatar">
+                                        <a class="avatar avatar-online" data-toggle="tooltip" data-placement="left">
+                                            <img src="/image/user.png" alt="...">
+                                            <i></i>
+                                        </a>
+                                    </div>
+                                    <div class="chat-body">
+                                        <div class="chat-content">
+                                                @if (!string.IsNullOrEmpty(message.FileIconUrl))
+                                                {
+                                                    <!-- Show file message with image -->
+                                                    <div class="file-message">
+                                                        <img src="@message.FileIconUrl" alt="File Icon">
+                                                        <p>@message.Content</p>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <!-- Show regular user message -->
+                                                    <p>@message.Content</p>
+                                                }
+                                                <time class="chat-time" datetime="@message.date.ToString("MM-ddTHH:mm")">@message.date.ToString("HH:mm tt")</time>
+                                        </div>
+                                    </div>
+                                </div>
+                                    @if (!message.IsAIResponse && similarFiles != null && similarFiles.Count > 0)
+                                    {
+                                        <div class="similar-files">
+                                            <p>File simili:</p>
+                                            @foreach (var similarFile in similarFiles)
+                                            {
+                                                <p>@similarFile</p>
+                                            }
+                                        </div>
+                                    }
+                                
+                            }
+                        }
+                            
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-footer">
+                    <div class="form-inline input-container">
+                        <div class="textarea-container">
+                            <input type="text" class="form-control" @bind="UserInput" @onkeydown="SendMessageOnEnter" placeholder="Say something" @ref="Textarea" />
+                        </div>
+                        <div class="button-container">
+                            <button class="btn btn-primary" @onclick="GetAPIResponse" type="button">Send</button>
+                        </div>
+                        <div>
+                             <label class="file-upload-label">
+                            <span class="file-upload-icon" >📂</span>
+                                <InputFile OnChange="@LoadFiles" multiple style="display: none;" />
+
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Add the popup element -->
+                    @if (popupType != PopupType.None)
+                    {
+                        <div class="popup">
+                            @if (popupType == PopupType.EmptyField)
+                            {
+                                <p>Inserisci una domanda></p>
+                                    
+                            }else if (popupType == PopupType.FileUploaded)
+                            {
+                                <p>File caricato con successo</p>
+                            }else if (popupType == PopupType.FileDeleted)
+                            {
+                                <p>File eliminato con successo</p>
+                            }
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+    MessageGPT AIRequest = new MessageGPT();
+    private string UserInput = string.Empty;
+    private ElementReference Textarea;
+    private int maxAllowedFiles = 3;
+    private string fileContent;
+    private PopupType popupType = PopupType.None;
+    private List<string> similarFiles = new List<string>();
+
+
+
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        foreach( var file in e.GetMultipleFiles(maxAllowedFiles))
+        {
+            try
+            {
+                string fileExtension = Path.GetExtension(file.Name);
+                string fileIconUrl = GetFileIconUrl(fileExtension);
+
+                // Read the file content
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.OpenReadStream().CopyToAsync(memoryStream);
+                    var fileContentBytes = memoryStream.ToArray();
+                    fileContent = Encoding.UTF8.GetString(fileContentBytes);
+
+                    var message = new MessageGPT
+                        {
+                            Content = file.Name,
+                            IsAIResponse = false,
+                            UserImage = "/user.png",
+                            date = DateTime.Now,
+                            FileIconUrl = fileIconUrl
+                        };
+
+                    await chatService.AddFileMessage(message);
+                    var aiResponse = await chatService.GetResponse(file.Name, fileContent);
+
+                    await chatService.AddBotResponse(aiResponse);
+                    // Calculate file embedding
+                    float[] fileEmbedding = await embeddingService.CalculateEmbedding(fileContent);
+                    await databaseService.InsertFileEmbedding(file.Name, fileContent, fileEmbedding);
+                    popupType = PopupType.FileUploaded;
+                    StateHasChanged();
+                    await Task.Delay(2000);
+                    popupType = PopupType.None;
+                }
+            }
+            catch(Exception ex)
+            {
+                throw;
+            }
+        }
+    }
+
+
+    private string GetFileIconUrl(string fileExtension)
+    {
+        Dictionary<string, string> fileIcons = new Dictionary<string, string>
+    {
+        { ".txt", "/image/icon-txt.png" },
+        { ".pdf", "/image/icon-pdf.png" },
+        { ".doc", "/image/icon-doc.png" },
+        { ".docx", "/image/icon-docx.png" }
+    };
+
+        if (fileIcons.TryGetValue(fileExtension.ToLower(), out string iconUrl))
+        {
+            return iconUrl;
+        }
+
+        return "/image/icons/default-icon.png";
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await ShowWellcomeMessage();
+        }
+        catch (Exception)
+        {
+            // Gestisci eventuali eccezioni
+        }
+    }
+
+    private async Task ShowWellcomeMessage()
+    {
+        await chatService.AddBotResponse("Ciao come posso aiutarti?");
+
+    }
+
+    public async Task GetAPIResponse()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(UserInput))
+            {
+
+                popupType = PopupType.EmptyField;
+                StateHasChanged();
+                await Task.Delay(2000);
+                popupType = PopupType.None;
+            }
+            else
+            {
+                float[] userEmbedding = await embeddingService.CalculateEmbedding(UserInput);
+                await chatService.AddRequest(UserInput);
+                List<string> similarFiles = await embeddingService.GetSimilarFilesByContent(UserInput);
+            }
+            if (similarFiles.Count > 0)
+            {
+                //// Se ci sono file simili, seleziona il primo e ottieni il suo contenuto
+                string selectedFile = similarFiles[1];
+                var selectedFileContent = await databaseService.GetFileContent(selectedFile);
+                var aiResponse = await chatService.GetResponse(UserInput, selectedFileContent);
+                await chatService.AddBotResponse(aiResponse);
+                
+            
+            }
+            else
+            {
+                // Se non ci sono file simili, ottieni la risposta dall'IA
+                //aagiungere popup nessun file simile 
+               
+            
+                
+                //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
+                //scritti in qualsiasi combinazione di maiuscole o minuscole
+                if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
+                {
+                    string fileNameToDelete = Regex.Replace(UserInput, @"^(elimina|rimuovi)\s+file\s+", "", RegexOptions.IgnoreCase).Trim();
+
+                    var isDeleted = await databaseService.DeleteFileEmbedding(fileNameToDelete);
+                    if (isDeleted)
+                    {
+                        popupType = PopupType.FileDeleted;
+                        StateHasChanged();
+                        await Task.Delay(2000);
+                        popupType = PopupType.None;
+                    }
+                }
+                else
+                {
+                    // Altrimenti ottenere la risposta dall'IA e aggiungere alla chat
+                    var response = await chatService.GetResponse(UserInput, fileContent);
+                    await chatService.AddBotResponse(response);
+
+                }
+               
+                UserInput = string.Empty;
+                await Textarea.FocusAsync();
+            }
+        }   catch (NullReferenceException)
+        {
+            //SKIP 
+        }
+        catch (Exception ex)
+        {
+            await chatService.AddBotError(ex.Message);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task SendMessageOnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && e.ShiftKey == false)
+        {
+            if (string.IsNullOrEmpty(UserInput))
+            {
+               
+                popupType = PopupType.EmptyField;
+                StateHasChanged();
+                await Task.Delay(2000);
+                popupType = PopupType.None;
+            }
+            else
+            {
+                await GetAPIResponse();
+
+            }
+        }
+
+    }  
+
+    private enum PopupType
+    {
+        None,
+        EmptyField,
+        FileUploaded,
+        FileDeleted
+    }
+
+}
+
+
+
+    

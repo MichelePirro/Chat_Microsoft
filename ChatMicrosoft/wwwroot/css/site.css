@@ -1,0 +1,277 @@
+body {
+    background: #ddd;
+}
+
+.chat-box {
+    height: 100%;
+    width: 100%;
+    background-color: #fff;
+}
+
+.chats {
+    padding: 30px 15px;
+    overflow-y: auto;
+    height: calc(100% - 30px);
+}
+
+.chat-avatar {
+    float: right;
+}
+
+    .chat-avatar .avatar {
+        width: 30px;
+        -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.3);
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.3);
+    }
+
+.chat-body {
+    display: block;
+    margin: 10px 30px 0 0;
+    overflow-y: auto;
+}
+
+    .chat-body:first-child {
+        margin-top: 0;
+    }
+
+.chat-content {
+    position: relative;
+    display: block;
+    float: right;
+    padding: 8px 15px;
+    margin: 0 20px 10px 0;
+    clear: both;
+    color: #fff;
+    background-color: #62a8ea;
+    border-radius: 4px;
+    -webkit-box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.37);
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.37);
+    max-width: 50%; 
+    word-break: break-word;
+}
+
+    .chat-content:before {
+        position: absolute;
+        top: 10px;
+        right: -10px;
+        width: 0;
+        height: 0;
+        content: '';
+        border: 5px solid transparent;
+        border-left-color: #62a8ea;
+    }
+
+    .chat-content > p:last-child {
+        margin-bottom: 0;
+    }
+
+    .chat-content + .chat-content:before {
+        border-color: transparent;
+    }
+
+.chat-time {
+    display: block;
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.chat-left .chat-avatar {
+    float: left;
+}
+
+.chat-left .chat-body {
+    margin-right: 0;
+    margin-left: 30px;
+}
+
+.chat-left .chat-content {
+    float: left;
+    margin: 0 0 10px 20px;
+    color: #76838f;
+    background-color: #dfe9ef;
+}
+
+    .chat-left .chat-content:before {
+        right: auto;
+        left: -10px;
+        border-right-color: #dfe9ef;
+        border-left-color: transparent;
+    }
+
+    .chat-left .chat-content + .chat-content:before {
+        border-color: transparent;
+    }
+
+.chat-left .chat-time {
+    color: #a3afb7;
+}
+
+
+.panel-footer {
+    display: flex;
+    background-color: transparent;
+    border-top: 1px solid transparent;
+    border-bottom-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    position: sticky;
+    bottom: 0;
+    justify-content: center;
+    width: 100%;
+    z-index: 1;
+}
+
+.avatar img {
+    width: 100%;
+    max-width: 200%;
+    height: auto;
+    border: 0 none;
+    border-radius: 1000px;
+}
+
+.chat-avatar .avatar {
+    width: 40px;
+}
+
+.avatar {
+    position: relative;
+    display: inline-block;
+    width: 100px;
+    white-space: nowrap;
+    border-radius: 1000px;
+    vertical-align: bottom;
+}
+
+.form-control {
+    width: 100%;
+    position: center;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.panel-body {
+    padding-top: 50px;
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+
+.chats::-webkit-scrollbar {
+    width: 0.5em;
+}
+
+.chats::-webkit-scrollbar-track {
+    background-color: transparent; 
+}
+
+
+.textarea-container {
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    bottom: 60px;
+    z-index: 1;
+    flex-grow: 1;
+}
+
+    .textarea-container textarea {
+        width: 100%;
+        height: contain;
+        resize: none;
+        overflow-y: auto;
+    }
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin-left: 10px;
+}
+
+.form-inline {
+    display: flex;
+    align-items: center;
+    width: 50%;
+    margin-bottom: 10px;
+}
+
+.footer img {
+    max-width: 120px;
+    max-height: 120px;
+}
+
+.text {
+    overflow: hidden;
+    white-space: normal; 
+    margin: 0 auto; 
+    animation: typing 0.5s;
+
+
+} 
+
+/*cursore*/
+/*@keyframes cursor {
+    from, to {
+        border-color: transparent
+    }
+    50% {
+        border-color: black;
+    }
+}*/
+
+/*effetto scrittura*/
+@keyframes typing {
+    from { width: 0}
+    to {
+        width: 100%
+        
+    }
+}
+
+/* Add these styles to your CSS file */
+.popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #333;
+    color: #fff;
+    padding: 10px;
+    border-radius: 4px;
+    animation: fadeOut 4s forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+.file-message img {
+    max-width: 80%;
+    max-height: 150px;
+}
+
+
+.file-upload-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: #007bff;
+    margin-left: 10px;
+}
+
+.file-upload-icon {
+    font-size: 20px;
+    margin-right: 5px;
+}
+
