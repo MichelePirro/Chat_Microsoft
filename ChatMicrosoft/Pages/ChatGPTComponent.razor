@@ -98,7 +98,7 @@
                 <div class="panel-footer">
                     <div class="form-inline input-container">
                         <div class="textarea-container">
-                            <input type="text" class="form-control" @bind="UserInput" @onkeydown="SendMessageOnEnter" placeholder="Say something" @ref="Textarea" />
+                            <input type="text" class="form-control" @bind="UserInput" @onkeydown="OnKeyDown" placeholder="Say something" @ref="Textarea" />
                         </div>
                         <div class="button-container">
                             <button class="btn btn-primary" @onclick="GetAPIResponse" type="button">Send</button>
@@ -142,7 +142,6 @@
     private string UserInput = string.Empty;
     private ElementReference Textarea;
     private int maxAllowedFiles = 3;
-    private string fileContent;
     private PopupType popupType = PopupType.None;
     private List<string> similarFiles = new List<string>();
 
@@ -163,7 +162,7 @@
                 {
                     await file.OpenReadStream().CopyToAsync(memoryStream);
                     var fileContentBytes = memoryStream.ToArray();
-                    fileContent = Encoding.UTF8.GetString(fileContentBytes);
+                    var fileContent = Encoding.UTF8.GetString(fileContentBytes);
 
                     var message = new MessageGPT
                         {
@@ -175,19 +174,22 @@
                         };
 
                     await chatService.AddFileMessage(message);
-                    var aiResponse = await chatService.GetResponse(file.Name, fileContent);
 
-                    await chatService.AddBotResponse(aiResponse);
                     // Calculate file embedding
                     float[] fileEmbedding = await embeddingService.CalculateEmbedding(fileContent);
                     await databaseService.InsertFileEmbedding(file.Name, fileContent, fileEmbedding);
+
+                    await chatService.AddBotResponse("File " + file.Name + " caricato...");
+
                     popupType = PopupType.FileUploaded;
                     StateHasChanged();
+
                     await Task.Delay(2000);
                     popupType = PopupType.None;
+                    StateHasChanged();
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw;
             }
@@ -236,67 +238,31 @@
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(UserInput))
+            //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
+            //scritti in qualsiasi combinazione di maiuscole o minuscole
+            if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
             {
+                string fileNameToDelete = Regex.Replace(UserInput, @"^(elimina|rimuovi)\s+file\s+", "", RegexOptions.IgnoreCase).Trim();
 
-                popupType = PopupType.EmptyField;
-                StateHasChanged();
-                await Task.Delay(2000);
-                popupType = PopupType.None;
+                var isDeleted = await databaseService.DeleteFileEmbedding(fileNameToDelete);
+                if (isDeleted)
+                {
+                    popupType = PopupType.FileDeleted;
+                    StateHasChanged();
+                    await Task.Delay(2000);
+                    popupType = PopupType.None;
+                }
             }
             else
             {
-                float[] userEmbedding = await embeddingService.CalculateEmbedding(UserInput);
-                await chatService.AddRequest(UserInput);
-                List<string> similarFiles = await embeddingService.GetSimilarFilesByContent(UserInput);
+                // Altrimenti ottenere la risposta dall'IA e aggiungere alla chat
+                var response = await chatService.GetResponse(UserInput);
+                await chatService.AddBotResponse(response);
             }
-            if (similarFiles.Count > 0)
-            {
-                //// Se ci sono file simili, seleziona il primo e ottieni il suo contenuto
-                string selectedFile = similarFiles[1];
-                var selectedFileContent = await databaseService.GetFileContent(selectedFile);
-                var aiResponse = await chatService.GetResponse(UserInput, selectedFileContent);
-                await chatService.AddBotResponse(aiResponse);
-                
-            
-            }
-            else
-            {
-                // Se non ci sono file simili, ottieni la risposta dall'IA
-                //aagiungere popup nessun file simile 
                
-            
-                
-                //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
-                //scritti in qualsiasi combinazione di maiuscole o minuscole
-                if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
-                {
-                    string fileNameToDelete = Regex.Replace(UserInput, @"^(elimina|rimuovi)\s+file\s+", "", RegexOptions.IgnoreCase).Trim();
-
-                    var isDeleted = await databaseService.DeleteFileEmbedding(fileNameToDelete);
-                    if (isDeleted)
-                    {
-                        popupType = PopupType.FileDeleted;
-                        StateHasChanged();
-                        await Task.Delay(2000);
-                        popupType = PopupType.None;
-                    }
-                }
-                else
-                {
-                    // Altrimenti ottenere la risposta dall'IA e aggiungere alla chat
-                    var response = await chatService.GetResponse(UserInput, fileContent);
-                    await chatService.AddBotResponse(response);
-
-                }
-               
-                UserInput = string.Empty;
-                await Textarea.FocusAsync();
-            }
-        }   catch (NullReferenceException)
-        {
-            //SKIP 
-        }
+            UserInput = string.Empty;
+            await Textarea.FocusAsync();
+        }   
         catch (Exception ex)
         {
             await chatService.AddBotError(ex.Message);
@@ -307,7 +273,7 @@
         }
     }
 
-    private async Task SendMessageOnEnter(KeyboardEventArgs e)
+    private async Task OnKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter" && e.ShiftKey == false)
         {
@@ -322,7 +288,6 @@
             else
             {
                 await GetAPIResponse();
-
             }
         }
 

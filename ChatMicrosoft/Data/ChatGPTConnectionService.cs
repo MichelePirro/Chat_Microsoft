@@ -11,8 +11,15 @@ namespace ChatMicrosoft.Data
             var apiUrl = config.GetValue<string>("ChatGPTSettings:ApiURL");
             var apiKey = config.GetValue<string>("ChatGPTSettings:ApiKey");
             api = new OpenAIAPI(apiKey);
+            PrecaricareGliEmbeddingDalDb();
         }
-          
+
+        private void PrecaricareGliEmbeddingDalDb()
+        {
+            //TODO
+        }
+
+
         public OpenAIAPI GetAPI()
         {
             return api;

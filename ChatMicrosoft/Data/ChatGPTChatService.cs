@@ -1,9 +1,6 @@
 ﻿using ChatMicrosoft.DataBase;
 using ChatMicrosoft.Models;
-using Google.Protobuf.WellKnownTypes;
 using OpenAI_API.Chat;
-using System.Diagnostics.Eventing.Reader;
-using static System.Net.Mime.MediaTypeNames;
 
 
 namespace ChatMicrosoft.Data
@@ -26,30 +23,21 @@ namespace ChatMicrosoft.Data
             Allena();
         }
 
-        public async Task<string> GetResponse(string query, string fileContent)
+        public async Task<string> GetResponse(string query)
         {
             if (string.IsNullOrEmpty(query))
             {
                 throw new NullReferenceException(nameof(query));
             }
-            if (!string.IsNullOrEmpty(fileContent))
-            {
-                // Append the file content as user input in the conversation
-                conversation.AppendUserInput(fileContent);
-                var aiResponse = await conversation.GetResponseFromChatbotAsync();
-                
-                return aiResponse;
-            }
-            else
-            {
-                conversation.AppendUserInput(query);
-                var aiResponse = await conversation.GetResponseFromChatbotAsync();
-                return aiResponse;
-            }
+
+            conversation.AppendUserInput(query);
+            var aiResponse = await conversation.GetResponseFromChatbotAsync();
+            return aiResponse;
+
         }
 
-            private void Allena()
-            {
+        private void Allena()
+        {
             // give instruction as System
             conversation.AppendSystemMessage("You are James T. Kirk. Admiral of the star fleet and commander dell'Enterprise star ship");
 
@@ -95,4 +83,3 @@ namespace ChatMicrosoft.Data
 
     }
 }
-

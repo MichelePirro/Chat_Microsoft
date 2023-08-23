@@ -6,9 +6,7 @@ using System.Data;
 namespace ChatMicrosoft.DataBase
 {
     public class DatabaseService
-
     {
-
         private readonly MySqlConnection connection;
 
         public DatabaseService(IConfiguration configuration)
@@ -19,17 +17,17 @@ namespace ChatMicrosoft.DataBase
 
         public async Task InsertFileEmbedding(string fileName, string textFile, float[] fileEmbedding)
         {
-                await connection.OpenAsync();
-                var query = "INSERT INTO file_embeddings(file_name, text_file, file_embedding, upload_date) VALUES(@FileName, @TextFile, @Embedding, @uploadDate)";
+            await connection.OpenAsync();
+            var query = "INSERT INTO file_embeddings(file_name, text_file, file_embedding, upload_date) VALUES(@FileName, @TextFile, @Embedding, @uploadDate)";
 
-                using (var command = new MySqlCommand(query, connection))
-                {
-                    command.Parameters.AddWithValue("@FileName", fileName);
-                    command.Parameters.AddWithValue("@TextFile", textFile);
-                    command.Parameters.AddWithValue("@Embedding", JsonConvert.SerializeObject(fileEmbedding));
-                    command.Parameters.AddWithValue("@uploadDate", DateTime.Now);
+            using (var command = new MySqlCommand(query, connection))
+            {
+                command.Parameters.AddWithValue("@FileName", fileName);
+                command.Parameters.AddWithValue("@TextFile", textFile);
+                command.Parameters.AddWithValue("@Embedding", JsonConvert.SerializeObject(fileEmbedding));
+                command.Parameters.AddWithValue("@uploadDate", DateTime.Now);
 
-                    await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
 
                 connection.Close();
             }
@@ -51,7 +49,8 @@ namespace ChatMicrosoft.DataBase
                     return true;
 
                 }
-            } catch (Exception)
+            } 
+            catch (Exception)
             {
                 return false;
             }
@@ -203,4 +202,3 @@ namespace ChatMicrosoft.DataBase
 
     }
 }
-

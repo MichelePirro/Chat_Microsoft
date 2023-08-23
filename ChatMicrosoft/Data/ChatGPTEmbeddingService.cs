@@ -2,6 +2,8 @@
 using ChatMicrosoft.Models;
 using Newtonsoft.Json;
 using OpenAI_API;
+using OpenAI_API.Embedding;
+using OpenAI_API.Models;
 using Org.BouncyCastle.Crypto.Digests;
 using System;
 using System.Text;
@@ -26,15 +28,15 @@ namespace ChatMicrosoft.Data
         public async Task<float[]> CalculateEmbedding(string text)
         {
             var apiInstance = chatService.GetAPI();
-            var response = await apiInstance.Embeddings.GetEmbeddingsAsync(text);
+            var response = await apiInstance.Embeddings.CreateEmbeddingAsync(new EmbeddingRequest(Model.AdaTextEmbedding, text));
+            var data = (float[])response;
 
-            if (response != null && response.Length > 0)
+            if ((data?.Length ?? 0) == 0)
             {
-                return response;
+                throw new Exception("Errore nel calcolo dell'embedding o nella risposta dell'API.");
             }
 
-            throw new Exception("Errore nel calcolo dell'embedding o nella risposta dell'API.");
-
+            return data;
         }
 
         public async Task<List<string>> GetSimilarFilesByContent(string userQuery)
