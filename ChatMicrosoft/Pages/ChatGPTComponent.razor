@@ -2,16 +2,17 @@
 @layout MainLayout
 @using System.Text;
 @using ChatMicrosoft.Data;
-@using ChatMicrosoft.DataBase;
+@using ChatMicrosoft.Helpers;
 @using ChatMicrosoft.Models;
-@inject ChatGPTChatService chatService
-@inject IJSRuntime JSRuntime
 @using Microsoft.AspNetCore.Components.Forms
 @using MySql.Data.MySqlClient;
 @using System.Text.RegularExpressions;
+@using ChatMicrosoft.Services;
 @inject IConfiguration config
 @inject DatabaseService databaseService
 @inject ChatGPTEmbeddingService embeddingService;
+@inject ChatGPTChatService chatService
+@inject IJSRuntime JSRuntime
 
 
 <PageTitle>Chat GPT</PageTitle>
@@ -98,16 +99,15 @@
                 <div class="panel-footer">
                     <div class="form-inline input-container">
                         <div class="textarea-container">
-                            <input type="text" class="form-control" @bind="UserInput" @onkeydown="OnKeyDown" placeholder="Say something" @ref="Textarea" />
+                            <input type="text" class="form-control" @bind="UserInput" @onkeydown="OnKeyDown" placeholder="Fammi una domanda" @ref="Textarea" />
                         </div>
                         <div class="button-container">
-                            <button class="btn btn-primary" @onclick="GetAPIResponse" type="button">Send</button>
+                            <button class="btn btn-primary" @onclick="OnSendClick" type="button">Send</button>
                         </div>
                         <div>
                              <label class="file-upload-label">
                             <span class="file-upload-icon" >📂</span>
                                 <InputFile OnChange="@LoadFiles" multiple style="display: none;" />
-
                             </label>
                         </div>
                     </div>
@@ -145,17 +145,110 @@
     private PopupType popupType = PopupType.None;
     private List<string> similarFiles = new List<string>();
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await ShowWellcomeMessage();
+            await Textarea.FocusAsync();
+        }
+        catch (Exception)
+        {
+            // Gestisci eventuali eccezioni
+        }
+    }
 
+    private async Task ShowWellcomeMessage()
+    {
+        await chatService.AddBotResponse("Ciao come posso aiutarti?");
+
+    }
+
+    private async Task OnSendClick()
+    {
+        await ProcessUserRequest();
+    }
+
+    public async Task ProcessUserRequest()
+    {
+        try
+        {
+            //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
+            //scritti in qualsiasi combinazione di maiuscole o minuscole
+            if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
+            {
+                string fileNameToDelete = Regex.Replace(UserInput, @"^(elimina|rimuovi)\s+file\s+", "", RegexOptions.IgnoreCase).Trim();
+
+                var isDeleted = await databaseService.DeleteFileEmbedding(fileNameToDelete);
+                if (isDeleted)
+                {
+                    popupType = PopupType.FileDeleted;
+                    StateHasChanged();
+                    await Task.Delay(2000);
+                    popupType = PopupType.None;
+                }
+            }
+            else
+            {
+                // Altrimenti ottenere la risposta dall'IA e aggiungere alla chat
+                var similarDocuments = await embeddingService.GetSimilarFilesByContent(UserInput);
+                if (similarDocuments.Count > 0)
+                {
+                    var similarFileNames = similarDocuments.Select(o => o.file_name);
+                    await chatService.AddBotResponse("File simili:" + string.Join("\r\n", similarFileNames));
+                    foreach(var file in similarDocuments)
+                    {
+                        await chatService.CaricaContenuto(file.text_file);
+                    }
+                }
+
+                var response = await chatService.GetResponse(UserInput);
+                await chatService.AddBotResponse(response);
+            }
+
+            UserInput = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            await chatService.AddBotError(ex.Message);
+        }
+        finally
+        {
+            await Textarea.FocusAsync();
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && e.ShiftKey == false)
+        {
+            if (string.IsNullOrEmpty(UserInput))
+            {
+                popupType = PopupType.EmptyField;
+                StateHasChanged();
+
+                await Task.Delay(2000);
+                popupType = PopupType.None;
+            }
+            else
+            {
+                await ProcessUserRequest();
+            }
+        }
+
+    }
 
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
     {
-        foreach( var file in e.GetMultipleFiles(maxAllowedFiles))
+        foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
         {
             try
             {
                 string fileExtension = Path.GetExtension(file.Name);
-                string fileIconUrl = GetFileIconUrl(fileExtension);
+                string fileIconUrl = Icons.GetFileIconUrl(fileExtension);
 
                 // Read the file content
                 using (var memoryStream = new MemoryStream())
@@ -191,107 +284,18 @@
             }
             catch (Exception ex)
             {
-                throw;
-            }
-        }
-    }
-
-
-    private string GetFileIconUrl(string fileExtension)
-    {
-        Dictionary<string, string> fileIcons = new Dictionary<string, string>
-    {
-        { ".txt", "/image/icon-txt.png" },
-        { ".pdf", "/image/icon-pdf.png" },
-        { ".doc", "/image/icon-doc.png" },
-        { ".docx", "/image/icon-docx.png" }
-    };
-
-        if (fileIcons.TryGetValue(fileExtension.ToLower(), out string iconUrl))
-        {
-            return iconUrl;
-        }
-
-        return "/image/icons/default-icon.png";
-    }
-
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            await ShowWellcomeMessage();
-        }
-        catch (Exception)
-        {
-            // Gestisci eventuali eccezioni
-        }
-    }
-
-    private async Task ShowWellcomeMessage()
-    {
-        await chatService.AddBotResponse("Ciao come posso aiutarti?");
-
-    }
-
-    public async Task GetAPIResponse()
-    {
-        try
-        {
-            //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
-            //scritti in qualsiasi combinazione di maiuscole o minuscole
-            if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
-            {
-                string fileNameToDelete = Regex.Replace(UserInput, @"^(elimina|rimuovi)\s+file\s+", "", RegexOptions.IgnoreCase).Trim();
-
-                var isDeleted = await databaseService.DeleteFileEmbedding(fileNameToDelete);
-                if (isDeleted)
-                {
-                    popupType = PopupType.FileDeleted;
-                    StateHasChanged();
-                    await Task.Delay(2000);
-                    popupType = PopupType.None;
-                }
-            }
-            else
-            {
-                // Altrimenti ottenere la risposta dall'IA e aggiungere alla chat
-                var response = await chatService.GetResponse(UserInput);
-                await chatService.AddBotResponse(response);
-            }
-               
-            UserInput = string.Empty;
-            await Textarea.FocusAsync();
-        }   
-        catch (Exception ex)
-        {
-            await chatService.AddBotError(ex.Message);
-        }
-        finally
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && e.ShiftKey == false)
-        {
-            if (string.IsNullOrEmpty(UserInput))
-            {
-               
                 popupType = PopupType.EmptyField;
                 StateHasChanged();
+
                 await Task.Delay(2000);
                 popupType = PopupType.None;
-            }
-            else
-            {
-                await GetAPIResponse();
+                StateHasChanged();
             }
         }
+    }
 
-    }  
+
+   
 
     private enum PopupType
     {

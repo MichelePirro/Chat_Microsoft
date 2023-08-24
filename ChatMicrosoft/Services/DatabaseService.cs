@@ -3,7 +3,7 @@ using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using System.Data;
 
-namespace ChatMicrosoft.DataBase
+namespace ChatMicrosoft.Services
 {
     public class DatabaseService
     {
@@ -49,7 +49,7 @@ namespace ChatMicrosoft.DataBase
                     return true;
 
                 }
-            } 
+            }
             catch (Exception)
             {
                 return false;
@@ -69,7 +69,7 @@ namespace ChatMicrosoft.DataBase
             {
                 await connection.OpenAsync();
 
-                var query = "SELECT file_name, file_embedding FROM file_embeddings";
+                var query = "SELECT file_name, file_embedding, text_file FROM file_embeddings";
 
                 using (var command = new MySqlCommand(query, connection))
                 using (var reader = await command.ExecuteReaderAsync())
@@ -84,14 +84,15 @@ namespace ChatMicrosoft.DataBase
                         fileEmbeddings.Add(new FileEmbedding
                         {
                             file_name = fileName,
-                            file_embedding = embedding
+                            file_embedding = embedding,
+                            text_file = reader.GetString("text_file"),
                         });
                     }
                 }
 
                 return fileEmbeddings;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Gestisci eventuali eccezioni
                 throw;
@@ -102,7 +103,7 @@ namespace ChatMicrosoft.DataBase
             }
         }
 
-        
+
 
         public async Task<string> GetFileContent(string fileName)
         {

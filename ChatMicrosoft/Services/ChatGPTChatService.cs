@@ -1,5 +1,5 @@
-﻿using ChatMicrosoft.DataBase;
-using ChatMicrosoft.Models;
+﻿using ChatMicrosoft.Models;
+using OpenAI_API;
 using OpenAI_API.Chat;
 
 
@@ -9,17 +9,15 @@ namespace ChatMicrosoft.Data
     {
         private readonly ChatGPTConnectionService connectionService;
         private readonly List<MessageGPT> chatMessages = new List<MessageGPT>();
+        private readonly OpenAIAPI api;
         private readonly Conversation conversation;
-        private readonly DatabaseService databaseService;
 
-
-        public ChatGPTChatService(ChatGPTConnectionService connectionService, DatabaseService databaseService)
+        public ChatGPTChatService(ChatGPTConnectionService connectionService)
         {
 
             this.connectionService = connectionService ?? throw new ArgumentNullException(nameof(connectionService));
-            this.databaseService = databaseService ?? throw new ArgumentNullException(nameof(databaseService));
-            var api = connectionService.GetAPI();
-            conversation = api.Chat.CreateConversation();
+            this.api = connectionService.GetAPI();
+            this.conversation = api.Chat.CreateConversation();
             Allena();
         }
 
@@ -81,5 +79,10 @@ namespace ChatMicrosoft.Data
             return chatMessages;
         }
 
+        public async Task CaricaContenuto(string content)
+        {
+            conversation.AppendSystemMessage(content);
+            await Task.CompletedTask;
+        }
     }
 }

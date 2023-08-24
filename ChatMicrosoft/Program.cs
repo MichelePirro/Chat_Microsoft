@@ -1,7 +1,5 @@
 using ChatMicrosoft.Data;
-using ChatMicrosoft.DataBase;
-using MySql.Data.MySqlClient;
-using System.Configuration;
+using ChatMicrosoft.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
