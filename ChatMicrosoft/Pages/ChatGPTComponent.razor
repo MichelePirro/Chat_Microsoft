@@ -173,6 +173,8 @@
     {
         try
         {
+            await chatService.AddRequest(UserInput);
+
             //espressione regolare per catturare il nome del file dopo la parola elimina file o rimuovi file
             //scritti in qualsiasi combinazione di maiuscole o minuscole
             if (Regex.IsMatch(UserInput, @"^(elimina|rimuovi)\s+file\s+", RegexOptions.IgnoreCase))
@@ -201,7 +203,6 @@
                         await chatService.CaricaContenuto(file.text_file);
                     }
                 }
-
                 var response = await chatService.GetResponse(UserInput);
                 await chatService.AddBotResponse(response);
             }
@@ -294,9 +295,7 @@
         }
     }
 
-
-   
-
+    
     private enum PopupType
     {
         None,

@@ -285,17 +285,17 @@ body {
 }
 
 .btn-chat-home {
-    background-color: #28a745; /* Colore verde */
-    border-radius: 25px; /* Bordi arrotondati */
-    padding: 10px 20px; /* Spaziatura interna */
-    color: white; /* Colore del testo */
-    transition: background-color 0.3s ease; /* Animazione di transizione */
+    background-color: #28a745;
+    border-radius: 25px;
+    padding: 10px 20px;
+    color: white;
+    transition: background-color 0.3s ease;
     display: block;
-    margin: 0 auto; /* Per centrare il bottone */
+    margin: 0 auto;
 }
 
 .btn-chat:hover {
-    background-color: #218838; /* Cambia il colore quando ci passi sopra */
+    background-color: #218838;
 }
 
 
@@ -328,7 +328,6 @@ body {
         color: #fff;
     }
 
-/* Non limitare le dimensioni del bottone solo al media query */
 .btn-chat-home {
     font-size: 1.125rem;
     padding: 1rem 2rem;
