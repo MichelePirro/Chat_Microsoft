@@ -39,7 +39,7 @@ namespace ChatMicrosoft.Data
         public async Task<List<FileEmbedding>> GetSimilarFilesByContent(string userQuery)
         {
             float[] userEmbedding = await CalculateEmbedding(userQuery);
-            double similarityThreshold = 0.8;
+            double similarityThreshold = 0.75;
 
             var allFileEmbeddings = await databaseService.GetAllFileEmbeddings();
 

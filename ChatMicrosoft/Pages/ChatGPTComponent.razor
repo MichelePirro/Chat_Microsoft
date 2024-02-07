@@ -197,14 +197,14 @@
                 if (similarDocuments.Count > 0)
                 {
                     var similarFileNames = similarDocuments.Select(o => o.file_name);
-                    await chatService.AddBotResponse("File simili:" + string.Join("\r\n", similarFileNames));
+                    await chatService.AddBotResponse("File simili: " + string.Join("\r\n", similarFileNames));
                     foreach(var file in similarDocuments)
                     {
                         await chatService.CaricaContenuto(file.text_file);
                     }
                 }
-                var response = await chatService.GetResponse(UserInput);
-                await chatService.AddBotResponse(response);
+                //var response = await chatService.GetResponse(UserInput);
+                //await chatService.AddBotResponse(response);
             }
 
             UserInput = string.Empty;
